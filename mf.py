@@ -13,6 +13,11 @@ import subprocess
 import pandas as pd
 import more_itertools
 from PyPDF2 import PdfFileReader
+
+#log.basicConfig(format="[ %(levelname)s ] %(message)s", level=log.INFO, stream=sys.stdout)
+log.getLogger('pdfquery').setLevel(log.ERROR)
+log.getLogger('PyPDF2').setLevel(log.ERROR)
+
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
@@ -90,9 +95,13 @@ def process_cas(casfile):
 
     pdf = pdfquery.PDFQuery(casfile)
     page = 0
+    coordinates_funds = []
+    coordinates_transactions = []
+    coordinates_closing = []
+
     funds_data = []
-    coordinates = []
     transactions_data = []
+    closing_id = 0
     while True:
         try:
             pdf.load(page)
@@ -102,14 +111,41 @@ def process_cas(casfile):
             for i in range(len(folios)):
                 folio = folios[i].layout
                 bbox = folio.bbox
-                folio_no = pdf.pq('LTTextLineHorizontal:in_bbox("%s, %s, %s, %s")' % (bbox[0], bbox[1], bbox[2] + 150, bbox[3] + 10)).text()
-                fund_name = pdf.pq('LTTextLineHorizontal:in_bbox("%s, %s, %s, %s")' % (bbox[0], bbox[1] - 20, bbox[2] + 150, bbox[3])).text()
+                #folio_no = pdf.pq('LTTextLineHorizontal:in_bbox("%s, %s, %s, %s")' % (bbox[0], bbox[1], bbox[2] + 150, bbox[3] + 10)).text()
+                #fund_name = pdf.pq('LTTextLineHorizontal:in_bbox("%s, %s, %s, %s")' % (bbox[0], bbox[1] - 20, bbox[2] + 150, bbox[3])).text()
+
+                id_ = len(funds_data)
                 funds_data.append({
-                    'folio_no': folio_no, 
-                    'fund_name': fund_name,
+                    'id': len(funds_data),
+                    #'folio_no': folio_no, 
+                    #'fund_name': fund_name,
                     'y': bbox[1],
                     'page': page
                 })
+
+                coordinates_funds.extend([
+                     {'id': str(id_) + "-" + 'folio_no', 'pageno': page,
+                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width), 'h': int(folio.height) + 5},
+                     {'id': str(id_) + "-" + 'folio_name', 'pageno': page,
+                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) + 5, 'w': int(folio.width) + 100, 'h': int(folio.height) + 5},
+                ])
+
+
+            ''' Closing Extraction '''
+            closings = pdf.pq('LTTextLineHorizontal:contains("Closing Unit Balance:")')
+            for i in range(len(closings)):
+                closing = closings[i].layout
+                bbox = closing.bbox
+                id_ = closing_id
+                closing_id += 1
+                coordinates_closing.extend([
+                     {'id': str(id_) + "-" + 'closing_unit', 'pageno': page,
+                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width), 'h': int(folio.height) + 5},
+                     {'id': str(id_) + "-" + 'closing_nav', 'pageno': page,
+                       'x': int(bbox[0]) + 200, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width) + 100, 'h': int(folio.height) + 5},
+                     {'id': str(id_) + "-" + 'closing_value', 'pageno': page,
+                       'x': int(bbox[0]) + 350, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width) + 150, 'h': int(folio.height) + 5},
+                ])
 
             ''' For every year parse the page for dates and then use predefined coordinates to extract the values '''
             for year in range(2000, 2021):
@@ -134,7 +170,7 @@ def process_cas(casfile):
                         'y': bbox[1],
                         'page': page
                     })
-                    coordinates.extend([
+                    coordinates_transactions.extend([
                      
                         {'id': str(id_) + "-" + 'transaction_date', 'pageno': page, 
                             'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(tnx.width), 'h': int(tnx.height) + 5}, 
@@ -149,15 +185,15 @@ def process_cas(casfile):
                 ])
                 #print(bbox, transaction.width, transaction.height)
                 #print(coordinates)
+            
+            if page > 1:
+                break
             page += 1
         except Exception as err:
             print(err)
             break
 
-    df_funds = pd.DataFrame(funds_data)
-    df_transaction_query = pd.DataFrame(transactions_data).astype(int)
 
-    print("Total Tranactions:", len(coordinates))
     def _return_transaction_dict(coordinates):
         coordinates = more_itertools.chunked(coordinates, 1000)
         extracted_items = {}
@@ -170,11 +206,33 @@ def process_cas(casfile):
                     extracted_items[id_] = {}
                 extracted_items[id_][key] = val[0].strip()
                 extracted_items[id_]['id'] = id_
+                fd = list(filter(lambda x: x['id'].split('-')[0] == id_ and x['id'].split('-')[1] == key, coordinate))
+                assert(len(fd) == 1)
+                fd = fd[0]
+                extracted_items[id_]["page"] = fd['pageno']
+                extracted_items[id_][key + "_cx"] = [fd['x'], fd['y'], fd['w'], fd['h']]
+
         return extracted_items
+    ''' Closing Data - pdf2txt data'''
+    extracted_closing = _return_transaction_dict(coordinates_closing)
+    df_closing = pd.DataFrame(extracted_closing.values())
+    print(df_closing)
 
-    extracted_items = _return_transaction_dict(coordinates)
+    ''' Funds Data - Combine both Pdfquery and Pdf2text data '''
+    print("Total Funds:", len(coordinates_funds))
+    df_funds                  = pd.DataFrame(funds_data)
+    extracted_funds           = _return_transaction_dict(coordinates_funds)
+    df_funds_extraction       = pd.DataFrame(extracted_funds.values())
+    df_funds_extraction['id'] = df_funds_extraction['id'].astype(int)
 
-    df_transaction_extraction = pd.DataFrame(extracted_items.values())
+    df_funds = pd.merge(df_funds_extraction, df_funds, on='id', how='left')
+
+    ''' Transaction Data - Combine both Pdfquery and Pdf2text data '''
+    print("Total Tranactions:", len(coordinates_transactions))
+    df_transaction                  = pd.DataFrame(transactions_data)
+    extracted_items                 = _return_transaction_dict(coordinates_transactions)
+
+    df_transaction_extraction       = pd.DataFrame(extracted_items.values())
     df_transaction_extraction['id'] = df_transaction_extraction['id'].astype(int)
 
     def _validate_date(x):
@@ -185,25 +243,49 @@ def process_cas(casfile):
         return True
    
     df_transaction_extraction['is_date'] = df_transaction_extraction['transaction_date'].apply(_validate_date)
-    df_transaction_extraction = df_transaction_extraction[df_transaction_extraction['is_date'] == True]
-    df_transaction = pd.merge(df_transaction_extraction, df_transaction_query, on='id', how='left')
+    df_transaction_extraction            = df_transaction_extraction[df_transaction_extraction['is_date'] == True]
+    df_transaction                       = pd.merge(df_transaction_extraction, df_transaction, on='id', how='left')
 
-    df_funds.to_csv('data/funds.csv', index=False)
-    df_transaction.to_csv('data/transaction.csv', index=False)
+    df_funds.to_csv(FILEPATH_FUNDS, index=False)
+    df_transaction.to_csv(FILEPATH_TRANSACTION, index=False)
 
 def generate_folio_satement():
-    df_funds = pd.read_csv('data/funds.csv')
-    df_transaction = pd.read_csv('data/transaction.csv')
-    print(df_funds)
-    print(df_transaction)
+    df_funds = pd.read_csv(FILEPATH_FUNDS)
+    df_funds = df_funds.sort_values(['id'])
+    df_transaction = pd.read_csv(FILEPATH_TRANSACTION)
+    #print(df_funds)
+    #print(df_transaction)
+   
+    def _map_transaction_2_fund(x):
+        #if x.page != 1:
+        #    return
+        #print('========================') 
+        #print(x.page, x.y, x.transaction_date, x.transaction_amount)
+        df_f = df_funds[(df_funds['page'] == x.page) & (df_funds['y'] > x.y)]
+        if df_f.shape[0] > 0:
+            #print(df_f)
+            df_f = df_f.tail(1)
+            return df_f.id.tolist()[0]
+        else:
+            #print('Not found')
+            df_f = df_funds[df_funds['page'] == x.page - 1]
+            df_f = df_f.tail(1)
+            return df_f.id.tolist()[0]
+            #print('>>>>>>>>>>>:',  df_f.id.tolist()[0])
+            #print(df_f)
+    df_transaction['fund_id'] = df_transaction[['page', 'y', 'transaction_date', 'transaction_amount']].apply(_map_transaction_2_fund, axis=1) 
+    #print(df_transaction)
 
+    i = 2 
+    print(df_funds[df_funds['id'] == i])
+    print('###################################')
+    print(df_transaction[df_transaction['fund_id'] == i].sort_values(['id']))
 if __name__ == "__main__":
-    log.basicConfig(format="[ %(levelname)s ] %(message)s", level=log.INFO, stream=sys.stdout)
 
     casfile = sys.argv[1]
     password = sys.argv[2]
     #convert_cas(casfile, password) 
     #download_mf_nav()
     #cas_mapping()
-    #process_cas("converted.pdf")
-    generate_folio_satement()
+    process_cas("converted.pdf")
+    #generate_folio_satement()
