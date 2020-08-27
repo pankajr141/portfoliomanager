@@ -253,6 +253,39 @@ def generate_folio_satement():
     print(df_funds[df_funds['id'] == i])
     print('###################################')
     print(df_transaction[df_transaction['fund_id'] == i].sort_values(['id']))
+
+def visualize(casfile):
+    _, _, PDF_WIDTH, PDF_HEIGHT = PdfFileReader(open(casfile, 'rb')).getPage(0).mediaBox
+    df_funds = pd.read_csv(FILEPATH_FUNDS)
+    df_transaction = pd.read_csv(FILEPATH_TRANSACTION)
+    import cv2
+    import ast
+    from pdf2jpg import pdf2jpg
+    import matplotlib.pyplot as plt
+
+    result = pdf2jpg.convert_pdf2jpg(casfile, "output", dpi=150, pages="0")
+    imgfile = result[0]['output_jpgfiles'][0]
+    img = cv2.imread(imgfile)
+    width_ratio = img.shape[1] / PDF_WIDTH
+    height_ratio = img.shape[0] / PDF_HEIGHT
+    print(width_ratio, height_ratio)
+
+    for df in [df_funds, df_transaction]:
+        for _, row in df.iterrows():
+            page = row['page']
+            if page != 0:
+                continue
+
+            for column in list(filter(lambda x: '_cx' in x, df.columns)):
+                coords = row[column]
+                x, y, w, h = ast.literal_eval(coords)
+                x, y, w, h = x * width_ratio, y * height_ratio, w * width_ratio, h * height_ratio
+                cv2.rectangle(img, (x, y), (x + w, y + h), 1)
+
+
+    img = cv2.resize(img, (0, 0), fx = 0.6, fy = 0.6) 
+    cv2.imshow('image', img)
+    cv2.waitKey(10000)
 if __name__ == "__main__":
 
     casfile = sys.argv[1]
@@ -261,4 +294,5 @@ if __name__ == "__main__":
     #download_mf_nav()
     #cas_mapping()
     #process_cas("converted.pdf")
-    generate_folio_satement()
+    #generate_folio_satement()
+    visualize('converted.pdf')
