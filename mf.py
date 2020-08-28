@@ -2,6 +2,7 @@ import os
 import cv2
 import sys
 import json
+import random
 import requests
 import pdfquery
 import pandas as pd
@@ -117,9 +118,9 @@ def process_cas(casfile):
 
                 coordinates_funds.extend([
                      {'id': str(id_) + "-" + 'folio_no', 'pageno': page,
-                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width), 'h': int(folio.height) + 5},
+                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(folio.width) + 50, 'h': int(folio.height) + 5},
                      {'id': str(id_) + "-" + 'folio_name', 'pageno': page,
-                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) + 5, 'w': int(folio.width) + 100, 'h': int(folio.height) + 5},
+                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) + 2, 'w': int(folio.width) + 150, 'h': int(folio.height) + 5},
                 ])
 
 
@@ -132,11 +133,11 @@ def process_cas(casfile):
                 closing_id += 1
                 coordinates_closing.extend([
                      {'id': str(id_) + "-" + 'closing_unit', 'pageno': page,
-                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width), 'h': int(folio.height) + 5},
+                       'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(folio.width) + 50, 'h': int(folio.height) + 3},
                      {'id': str(id_) + "-" + 'closing_nav', 'pageno': page,
-                       'x': int(bbox[0]) + 200, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width) + 100, 'h': int(folio.height) + 5},
+                       'x': int(bbox[0]) + 200, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(folio.width) + 80, 'h': int(folio.height) + 3},
                      {'id': str(id_) + "-" + 'closing_value', 'pageno': page,
-                       'x': int(bbox[0]) + 350, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(folio.width) + 150, 'h': int(folio.height) + 5},
+                       'x': int(bbox[0]) + 400, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(folio.width) + 150, 'h': int(folio.height) + 3},
                 ])
 
             ''' For every year parse the page for dates and then use predefined coordinates to extract the values '''
@@ -151,20 +152,20 @@ def process_cas(casfile):
                     coordinates_transactions.extend([
                      
                         {'id': str(id_) + "-" + 'transaction_date', 'pageno': page, 
-                            'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(tnx.width), 'h': int(tnx.height) + 5}, 
+                            'x': int(bbox[0]), 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(tnx.width) + 5, 'h': int(tnx.height) + 3}, 
                         {'id': str(id_) + "-" + 'transaction_type', 'pageno': page, 
-                            'x': int(bbox[0]) + 40, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(tnx.width) + 240, 'h': int(tnx.height) + 5}, 
+                            'x': int(bbox[0]) + 40, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(tnx.width) + 220, 'h': int(tnx.height) + 3}, 
                         {'id': str(id_) + "-" + 'transaction_amount', 'pageno': page, 
-                            'x': int(bbox[0]) + 250, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(tnx.width) + 70, 'h': int(tnx.height) + 5}, 
+                            'x': int(bbox[0]) + 300, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(tnx.width) + 20, 'h': int(tnx.height) + 3}, 
                         {'id': str(id_) + "-" + 'transaction_nav', 'pageno': page, 
-                            'x': int(bbox[0]) + 350, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(tnx.width) + 50, 'h': int(tnx.height) + 5}, 
+                            'x': int(bbox[0]) + 370, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(tnx.width) + 20, 'h': int(tnx.height) + 3}, 
                         {'id': str(id_) + "-" + 'transaction_units', 'pageno': page, 
-                            'x': int(bbox[0]) + 400, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 5, 'w': int(tnx.width) + 50, 'h': int(tnx.height) + 5}, 
+                            'x': int(bbox[0]) + 420, 'y': int(PDF_HEIGHT) - int(bbox[1]) - 8, 'w': int(tnx.width) + 30, 'h': int(tnx.height) + 3}, 
                 ])
                 #print(bbox, transaction.width, transaction.height)
                 #print(coordinates)
             
-            #if page > 1:
+            #if page > 0:
             #    break
             page += 1
         except Exception as err:
@@ -216,9 +217,12 @@ def process_cas(casfile):
    
     df_transaction['is_date'] = df_transaction['transaction_date'].apply(_validate_date)
     df_transaction            = df_transaction[df_transaction['is_date'] == True]
+    print(df_funds)
+    #print(df_transaction)
 
     df_funds.to_csv(FILEPATH_FUNDS, index=False)
     df_transaction.to_csv(FILEPATH_TRANSACTION, index=False)
+    df_closing.to_csv(FILEPATH_CLOSING, index=False)
 
 def generate_folio_satement():
     df_funds = pd.read_csv(FILEPATH_FUNDS)
@@ -258,6 +262,7 @@ def visualize(casfile):
     _, _, PDF_WIDTH, PDF_HEIGHT = PdfFileReader(open(casfile, 'rb')).getPage(0).mediaBox
     df_funds = pd.read_csv(FILEPATH_FUNDS)
     df_transaction = pd.read_csv(FILEPATH_TRANSACTION)
+    df_closing = pd.read_csv(FILEPATH_CLOSING)
     import cv2
     import ast
     from pdf2jpg import pdf2jpg
@@ -270,7 +275,7 @@ def visualize(casfile):
     height_ratio = img.shape[0] / PDF_HEIGHT
     print(width_ratio, height_ratio)
 
-    for df in [df_funds, df_transaction]:
+    for df in [df_funds, df_transaction, df_closing]:
         for _, row in df.iterrows():
             page = row['page']
             if page != 0:
@@ -280,7 +285,7 @@ def visualize(casfile):
                 coords = row[column]
                 x, y, w, h = ast.literal_eval(coords)
                 x, y, w, h = x * width_ratio, y * height_ratio, w * width_ratio, h * height_ratio
-                cv2.rectangle(img, (x, y), (x + w, y + h), 1)
+                cv2.rectangle(img, (x, y), (x + w, y + h), random.choice([1,2,3,4,5]), 2)
 
 
     img = cv2.resize(img, (0, 0), fx = 0.6, fy = 0.6) 
@@ -293,6 +298,6 @@ if __name__ == "__main__":
     #convert_cas(casfile, password) 
     #download_mf_nav()
     #cas_mapping()
-    #process_cas("converted.pdf")
+    process_cas("converted.pdf")
     #generate_folio_satement()
     visualize('converted.pdf')
