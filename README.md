@@ -9,7 +9,7 @@ The repository consist of a offline codebase which will store all the personal d
 ## Highlights
 
 * <b>Sqlite [Local]</b> - Storing the finantial information
-* <b>Nav Update</b> - Based on command line or scheduled cron, to retrieve latest NAV from internet
+* <b>Nav Update</b> - Based on command line or scheduled cron, to retrieve latest NAV from internet - http://portal.amfiindia.com
 * <b>CAS Statement</b> - Downloaded from Kfintech
 * <b>Python Server [Local]</b> - Brrowsing the Portfolio, user can host it locally or hosted runtime under VPN.
 
