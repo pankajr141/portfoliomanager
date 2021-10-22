@@ -1,0 +1,4 @@
+pandas==1.2.2
+pdfquery==0.4.3
+PyPDF2==1.26.0
+fuzzywuzzy==0.18.0
