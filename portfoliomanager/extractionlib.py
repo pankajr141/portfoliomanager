@@ -1,11 +1,11 @@
 import os
 import sys
 import json
-from portfoliomanager import settings
 import subprocess
 import pdfquery
 import more_itertools
 import pandas as pd
+from portfoliomanager import settings
 from PyPDF2 import PdfFileReader
 import logging as log
 
