@@ -1,17 +1,16 @@
 FILEPATH_NAV = "data/mf_nav.csv"
-FILEPATH_TRANSACTION = "data/transaction.csv"
-FILEPATH_FUNDS = "data/funds.csv"
-FILEPATH_CLOSING = "data/closing.csv"
+FILEPATH_CAS_TRANSACTION = "data/cas_transactions.csv"
+FILEPATH_CAS_FUNDS = "data/cas_funds.csv"
+FILEPATH_CAS_VALUATION = "data/cas_valuation.csv"
 
-
-FUND_HOUSE_MAPPING =  {            
+FUND_HOUSE_MAPPING =  {
     'icici': "ICICI",
     'mirae' :  'MIRAE ASSET',
     'hdfc' : 'HDFC',
     'axis': 'AXIS',
     'sbi': 'SBI',
     'nippon': 'NIPPON',
-    'edelweiss': 'Edelweiss', 
+    'edelweiss': 'Edelweiss',
     'dsp': 'DSP',
     'bnp': 'BNP','franklin': 'Franklin Templeton',
     'bharat' : 'Edelweiss',
