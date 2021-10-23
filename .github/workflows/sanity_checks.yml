@@ -5,7 +5,7 @@ name: CI process for sanity check
 
 on:
   push:
-    branches: [ devalop, main ]
+
   pull_request:
     branches: [ main ]
 
